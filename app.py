@@ -2,21 +2,20 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
+import json
 
 # ----------------- CONFIG -----------------
-GOOGLE_SHEET_ID = "1ix4XIjylwxWY6VNm4jDF8ZdKUgIN3f8cBh4KPOP9fEY"  # Google Sheet file ID
-REFERENCE_SHEET_NAME = "Sheet1"  # Tab name for reference data
-SUBMISSION_SHEET_NAME = "Sheet2"  # Tab name for submissions
+GOOGLE_SHEET_ID = "1ix4XIjylwxWY6VNm4jDF8ZdKUgIN3f8cBh4KPOP9fEY"
+REFERENCE_SHEET_NAME = "Sheet1"
+SUBMISSION_SHEET_NAME = "Sheet2"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 # Authenticate Google Sheets client (works locally and on Streamlit Cloud)
 @st.cache_resource
 def get_gspread_client():
     try:
-        if "google_service_account" in st.secrets:  # Running on Streamlit Cloud
-            creds_dict = dict(st.secrets["google_service_account"])
-            # Fix private_key newlines
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+        if "GOOGLE_SERVICE_ACCOUNT" in st.secrets:  # Running on Streamlit Cloud
+            creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
             creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
         else:  # Running locally
             SERVICE_ACCOUNT_FILE = "service_account.json"
@@ -36,10 +35,10 @@ def load_reference_data():
     return pd.DataFrame(data)
 
 # Append data to submissions sheet
-def append_submission(id_number, name, phone):
+def append_submission(id_number, name, phone, marks):
     client = get_gspread_client()
     worksheet = client.open_by_key(GOOGLE_SHEET_ID).worksheet(SUBMISSION_SHEET_NAME)
-    row = [str(id_number), str(name), str(phone)]
+    row = [str(id_number), str(name), str(phone), str(marks)]
     worksheet.append_row(row)
 
 # ----------------- STREAMLIT UI -----------------
@@ -48,7 +47,7 @@ st.set_page_config(page_title="ID Lookup & Submit", page_icon="📝", layout="ce
 # Initialize session state
 for key, value in {
     "verified": False, "submitted": False,
-    "name": "", "phone": "", "id_number": ""
+    "name": "", "phone": "", "id_number": "", "marks": ""
 }.items():
     if key not in st.session_state:
         st.session_state[key] = value
@@ -83,16 +82,26 @@ if not st.session_state.verified:
             except Exception as e:
                 st.error(f"Error connecting to Google Sheets: {e}")
 
-# Step 2: Show verification + Submit button
+# Step 2: Show verification + Marks + Submit button
 else:
     st.success("✅ ID found! Please verify your details.")
     st.text_input("Name:", value=st.session_state.name, disabled=True)
     st.text_input("Phone Number:", value=st.session_state.phone, disabled=True)
 
+    st.session_state.marks = st.text_input("Enter Marks:")
+
     if st.button("Confirm & Submit"):
-        try:
-            append_submission(st.session_state.id_number, st.session_state.name, st.session_state.phone)
-            st.session_state.submitted = True
-            st.rerun()
-        except Exception as e:
-            st.error(f"Error submitting data: {e}")
+        if not st.session_state.marks.strip():
+            st.error("Please enter marks before submitting.")
+        else:
+            try:
+                append_submission(
+                    st.session_state.id_number,
+                    st.session_state.name,
+                    st.session_state.phone,
+                    st.session_state.marks
+                )
+                st.session_state.submitted = True
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error submitting data: {e}")
