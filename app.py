@@ -2,22 +2,30 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
+import json
+import os
 
 # ----------------- CONFIG -----------------
-SERVICE_ACCOUNT_FILE = "service_account.json"  # Path to your service account key JSON
 GOOGLE_SHEET_ID = "1ix4XIjylwxWY6VNm4jDF8ZdKUgIN3f8cBh4KPOP9fEY"  # Google Sheet file ID
-
 REFERENCE_SHEET_NAME = "Sheet1"  # Tab name for reference data
 SUBMISSION_SHEET_NAME = "Sheet2"  # Tab name for submissions
-
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-# Authenticate Google Sheets client
+# Authenticate Google Sheets client (works locally and on Streamlit Cloud)
 @st.cache_resource
 def get_gspread_client():
-    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-    client = gspread.authorize(creds)
-    return client
+    try:
+        if "GOOGLE_SERVICE_ACCOUNT" in st.secrets:  # Running on Streamlit Cloud
+            creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
+            creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+        else:  # Running locally
+            SERVICE_ACCOUNT_FILE = "service_account.json"
+            creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        client = gspread.authorize(creds)
+        return client
+    except Exception as e:
+        st.error(f"Authentication failed: {e}")
+        st.stop()
 
 # Load reference sheet into DataFrame
 @st.cache_data
@@ -31,7 +39,6 @@ def load_reference_data():
 def append_submission(id_number, name, phone):
     client = get_gspread_client()
     worksheet = client.open_by_key(GOOGLE_SHEET_ID).worksheet(SUBMISSION_SHEET_NAME)
-    # Convert all values to strings to ensure JSON serializability
     row = [str(id_number), str(name), str(phone)]
     worksheet.append_row(row)
 
@@ -39,16 +46,12 @@ def append_submission(id_number, name, phone):
 st.set_page_config(page_title="ID Lookup & Submit", page_icon="📝", layout="centered")
 
 # Initialize session state
-if "verified" not in st.session_state:
-    st.session_state.verified = False
-if "submitted" not in st.session_state:
-    st.session_state.submitted = False
-if "name" not in st.session_state:
-    st.session_state.name = ""
-if "phone" not in st.session_state:
-    st.session_state.phone = ""
-if "id_number" not in st.session_state:
-    st.session_state.id_number = ""
+for key, value in {
+    "verified": False, "submitted": False,
+    "name": "", "phone": "", "id_number": ""
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 # If already submitted, show Thank You page
 if st.session_state.submitted:
@@ -67,15 +70,14 @@ if not st.session_state.verified:
         else:
             try:
                 df = load_reference_data()
-                # Ensure ID Number is compared as string
                 match = df[df["ID Number"].astype(str) == id_number.strip()]
 
                 if match.empty:
                     st.error("❌ ID not found. Please check and try again.")
                 else:
                     st.session_state.id_number = id_number.strip()
-                    st.session_state.name = str(match.iloc[0]["Name"])  # Convert to string
-                    st.session_state.phone = str(match.iloc[0]["Phone Number"])  # Convert to string
+                    st.session_state.name = str(match.iloc[0]["Name"])
+                    st.session_state.phone = str(match.iloc[0]["Phone Number"])
                     st.session_state.verified = True
                     st.rerun()
             except Exception as e:
