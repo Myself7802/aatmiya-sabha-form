@@ -3,61 +3,50 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 import json
+import os
 
 # ----------------- CONFIG -----------------
 GOOGLE_SHEET_ID = "1ix4XIjylwxWY6VNm4jDF8ZdKUgIN3f8cBh4KPOP9fEY"
 REFERENCE_SHEET_NAME = "Sheet1"
 SUBMISSION_SHEET_NAME = "Sheet2"
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-ADMIN_PASSWORD = "12345"  # Password for history page
+ADMIN_PASSWORD = "12345"
 
-# Authenticate Google Sheets client (works locally and on Streamlit Cloud)
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+# Authenticate Google Sheets client (works locally & in Streamlit Cloud)
 @st.cache_resource
 def get_gspread_client():
     try:
-        if "google_service_account" in st.secrets:  # Running on Streamlit Cloud
-            creds_dict = dict(st.secrets["google_service_account"])
-            # Fix private_key newlines
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-            creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-        else:  # Running locally
+        if "google_service_account" in st.secrets:
+            # Running on Streamlit Cloud
+            creds = Credentials.from_service_account_info(
+                dict(st.secrets["google_service_account"]), scopes=SCOPES
+            )
+        else:
+            # Running locally
             SERVICE_ACCOUNT_FILE = "service_account.json"
             creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-        client = gspread.authorize(creds)
-        return client
+
+        return gspread.authorize(creds)
     except Exception as e:
         st.error(f"Authentication failed: {e}")
         st.stop()
 
-# Authenticate Google Sheets client
-@st.cache_resource
-def get_gspread_client():
-    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-    client = gspread.authorize(creds)
-    return client
-
 # Load reference sheet into DataFrame
 @st.cache_data
 def load_reference_data():
-    client = get_gspread_client()
-    worksheet = client.open_by_key(GOOGLE_SHEET_ID).worksheet(REFERENCE_SHEET_NAME)
-    data = worksheet.get_all_records()
-    return pd.DataFrame(data)
+    worksheet = get_gspread_client().open_by_key(GOOGLE_SHEET_ID).worksheet(REFERENCE_SHEET_NAME)
+    return pd.DataFrame(worksheet.get_all_records())
 
-# Load submissions sheet into DataFrame
-# Load submissions sheet into DataFrame (no caching so it always refreshes)
+# Always fresh submission data
 def load_submission_data():
-    client = get_gspread_client()
-    worksheet = client.open_by_key(GOOGLE_SHEET_ID).worksheet(SUBMISSION_SHEET_NAME)
-    data = worksheet.get_all_records()
-    return pd.DataFrame(data)
+    worksheet = get_gspread_client().open_by_key(GOOGLE_SHEET_ID).worksheet(SUBMISSION_SHEET_NAME)
+    return pd.DataFrame(worksheet.get_all_records())
 
 # Append data to submissions sheet
 def append_submission(id_number, name, phone, marks):
-    client = get_gspread_client()
-    worksheet = client.open_by_key(GOOGLE_SHEET_ID).worksheet(SUBMISSION_SHEET_NAME)
-    row = [str(id_number), str(name), str(phone), str(marks)]
-    worksheet.append_row(row)
+    worksheet = get_gspread_client().open_by_key(GOOGLE_SHEET_ID).worksheet(SUBMISSION_SHEET_NAME)
+    worksheet.append_row([str(id_number), str(name), str(phone), str(marks)])
 
 # ----------------- STREAMLIT UI -----------------
 st.set_page_config(page_title="ID Lookup & History", page_icon="📝", layout="centered")
@@ -67,18 +56,9 @@ page = st.sidebar.radio("📌 Select Page", ["ID Submission", "History"])
 
 # ----------------- PAGE 1: ID Submission -----------------
 if page == "ID Submission":
-    if "verified" not in st.session_state:
-        st.session_state.verified = False
-    if "submitted" not in st.session_state:
-        st.session_state.submitted = False
-    if "name" not in st.session_state:
-        st.session_state.name = ""
-    if "phone" not in st.session_state:
-        st.session_state.phone = ""
-    if "id_number" not in st.session_state:
-        st.session_state.id_number = ""
-    if "marks" not in st.session_state:
-        st.session_state.marks = ""
+    for key in ["verified", "submitted", "name", "phone", "id_number", "marks"]:
+        if key not in st.session_state:
+            st.session_state[key] = "" if key not in ["verified", "submitted"] else False
 
     if st.session_state.submitted:
         st.markdown("<h1 style='text-align: center; color: green;'>✅ Thank You!</h1>", unsafe_allow_html=True)
@@ -107,7 +87,6 @@ if page == "ID Submission":
                         st.rerun()
                 except Exception as e:
                     st.error(f"Error connecting to Google Sheets: {e}")
-
     else:
         st.success("✅ ID found! Please verify your details.")
         st.text_input("Name:", value=st.session_state.name, disabled=True)
@@ -131,7 +110,6 @@ if page == "ID Submission":
                     st.error(f"Error submitting data: {e}")
 
 # ----------------- PAGE 2: History (Password Protected) -----------------
-# ----------------- PAGE 2: History (Password Protected) -----------------
 elif page == "History":
     st.title("🔐 Admin Login Required")
 
@@ -149,11 +127,10 @@ elif page == "History":
     else:
         st.title("📜 Submission History")
         try:
-            df_history = load_submission_data()  # always fresh
+            df_history = load_submission_data()
             if df_history.empty:
                 st.info("No submissions found yet.")
             else:
                 st.dataframe(df_history, use_container_width=True)
         except Exception as e:
             st.error(f"Error loading submission history: {e}")
-
