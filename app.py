@@ -9,6 +9,7 @@ GOOGLE_SHEET_ID = "1ix4XIjylwxWY6VNm4jDF8ZdKUgIN3f8cBh4KPOP9fEY"
 REFERENCE_SHEET_NAME = "Sheet1"
 SUBMISSION_SHEET_NAME = "Sheet2"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+ADMIN_PASSWORD = "12345"  # Password for history page
 
 # Authenticate Google Sheets client (works locally and on Streamlit Cloud)
 @st.cache_resource
