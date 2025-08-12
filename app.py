@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-import json
-import os
 
 # ----------------- CONFIG -----------------
 GOOGLE_SHEET_ID = "1ix4XIjylwxWY6VNm4jDF8ZdKUgIN3f8cBh4KPOP9fEY"  # Google Sheet file ID
@@ -15,8 +13,10 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 @st.cache_resource
 def get_gspread_client():
     try:
-        if "GOOGLE_SERVICE_ACCOUNT" in st.secrets:  # Running on Streamlit Cloud
-            creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
+        if "google_service_account" in st.secrets:  # Running on Streamlit Cloud
+            creds_dict = dict(st.secrets["google_service_account"])
+            # Fix private_key newlines
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
             creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
         else:  # Running locally
             SERVICE_ACCOUNT_FILE = "service_account.json"
