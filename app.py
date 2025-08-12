@@ -15,12 +15,8 @@ ADMIN_PASSWORD = "12345"  # Password for history page
 @st.cache_resource
 def get_gspread_client():
     try:
-        if "GOOGLE_SERVICE_ACCOUNT" in st.secrets:  # Running on Streamlit Cloud
-            creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
-            creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-        else:  # Running locally
-            SERVICE_ACCOUNT_FILE = "service_account.json"
-            creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
+        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
         client = gspread.authorize(creds)
         return client
     except Exception as e:
