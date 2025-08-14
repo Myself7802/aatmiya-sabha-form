@@ -111,7 +111,7 @@ if page == "MARKS ENTRY":
         st.write("Your submission has been recorded successfully.")
         st.stop()
 
-    st.title("🔍 ID Verification & Submission")
+    st.title("🔍 MARKS ENTRY")
 
     if not st.session_state.verified:
         smk_no = st.text_input("Enter your SMK NO:")
@@ -174,7 +174,7 @@ elif page == "MARKS SHEET LIST":
 
 # ----------------- PAGE 3: Not Submitted List -----------------
 elif page == "PENDING MARK ENTRY":
-    st.title("PENDING MARK ENTRY")
+    st.title("📜 PENDING MARK ENTRY")
     if admin_login("not_submitted_access"):
         try:
             df_ref = load_reference_data()
