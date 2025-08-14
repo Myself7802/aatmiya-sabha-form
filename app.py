@@ -9,8 +9,8 @@ import os
 GOOGLE_SHEET_ID = "1ix4XIjylwxWY6VNm4jDF8ZdKUgIN3f8cBh4KPOP9fEY"  # Google Sheet file ID
 
 REFERENCE_SHEET_NAME = "NAME_LIST"  # Tab name for reference data
-SUBMISSION_SHEET_NAME = "MARKS_LIST"  # Tab name for submissions
-ADMIN_PASSWORD = "12345"  # Password for history & not submitted page
+SUBMISSION_SHEET_NAME = "MARKS SHEET LIST"  # Tab name for submissions
+ADMIN_PASSWORD = "exam@atm"  # Password for history & not submitted page
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
@@ -68,10 +68,10 @@ def append_submission(smk_no, atm_no, full_name, phone_no, marks):
     worksheet.append_row(row)
 
 # ----------------- STREAMLIT UI -----------------
-st.set_page_config(page_title="ID Lookup & History", page_icon="📝", layout="centered")
+st.set_page_config(page_title="MARKS ENTRY", page_icon="📝", layout="centered")
 
 # Sidebar navigation
-page = st.sidebar.radio("📌 Select Page", ["ID Submission", "History", "Not Submitted List"])
+page = st.sidebar.radio("📌 Select Page", ["MARKS ENTRY", "MARKS SHEET LIST", "PENDING MARK ENTRY"])
 
 # ----------------- Helper: Admin Login -----------------
 def admin_login(session_key):
@@ -89,8 +89,8 @@ def admin_login(session_key):
                 return False
     return st.session_state[session_key]
 
-# ----------------- PAGE 1: ID Submission -----------------
-if page == "ID Submission":
+# ----------------- PAGE 1: MARKS ENTRY -----------------
+if page == "MARKS ENTRY":
     if "verified" not in st.session_state:
         st.session_state.verified = False
     if "submitted" not in st.session_state:
@@ -160,8 +160,8 @@ if page == "ID Submission":
                     st.error(f"Error submitting data: {e}")
 
 # ----------------- PAGE 2: History -----------------
-elif page == "History":
-    st.title("📜 Submission History")
+elif page == "MARKS SHEET LIST":
+    st.title("📜 MARKS SHEET LIST")
     if admin_login("history_access"):
         try:
             df_history = load_submission_data()
@@ -173,8 +173,8 @@ elif page == "History":
             st.error(f"Error loading submission history: {e}")
 
 # ----------------- PAGE 3: Not Submitted List -----------------
-elif page == "Not Submitted List":
-    st.title("❌ Users Who Have Not Submitted the Form")
+elif page == "PENDING MARK ENTRY":
+    st.title("PENDING MARK ENTRY")
     if admin_login("not_submitted_access"):
         try:
             df_ref = load_reference_data()
