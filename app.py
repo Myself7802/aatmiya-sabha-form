@@ -72,7 +72,10 @@ def append_submission(no, smk_no, atm_no, full_name, phone_no, marks):
 st.set_page_config(page_title="MARKS ENTRY", page_icon="📝", layout="centered")
 
 # Sidebar navigation
-page = st.sidebar.radio("📌 Select Page", ["MARKS ENTRY", "MARKS SHEET LIST", "PENDING MARK ENTRY"])
+page = st.sidebar.radio(
+    "📌 Select Page",
+    ["MARKS ENTRY", "MARKS SHEET LIST", "PENDING MARK ENTRY", "SETTINGS"]
+)
 
 # ----------------- Helper: Admin Login -----------------
 def admin_login(session_key):
@@ -201,3 +204,14 @@ elif page == "PENDING MARK ENTRY":
 
         except Exception as e:
             st.error(f"Error loading not submitted list: {e}")
+
+# ----------------- PAGE 4: SETTINGS -----------------
+elif page == "SETTINGS":
+    st.title("⚙️ SETTINGS")
+
+    st.markdown("Use the button below to clear cached data and reload fresh data from Google Sheets.")
+
+    if st.button("🔄 Refresh Data"):
+        st.cache_data.clear()
+        st.success("✅ Cache cleared! Fetching latest data...")
+        st.rerun()
