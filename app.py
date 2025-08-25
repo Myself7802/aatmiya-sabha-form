@@ -33,7 +33,7 @@ def get_gspread_client():
         st.stop()
 
 # Load reference sheet into DataFrame
-@st.cache_data
+@st.cache_data(ttl=0)
 def load_reference_data():
     client = get_gspread_client()
     worksheet = client.open_by_key(GOOGLE_SHEET_ID).worksheet(REFERENCE_SHEET_NAME)
@@ -42,9 +42,10 @@ def load_reference_data():
 
     # Ensure correct column names
     df.rename(columns={
-        "ID Number": "SMK NO",
-        "Name": "FULL NAME",
-        "Phone Number": "PHONE NO"
+    "NO": "NO",
+    "ID Number": "SMK NO",
+    "Name": "FULL NAME",
+    "Phone Number": "PHONE NO"
     }, inplace=True)
 
     # If ATM NO column is missing in the sheet, add empty column
@@ -61,10 +62,10 @@ def load_submission_data():
     return pd.DataFrame(data)
 
 # Append data to submissions sheet
-def append_submission(smk_no, atm_no, full_name, phone_no, marks):
+def append_submission(no, smk_no, atm_no, full_name, phone_no, marks):
     client = get_gspread_client()
     worksheet = client.open_by_key(GOOGLE_SHEET_ID).worksheet(SUBMISSION_SHEET_NAME)
-    row = [str(smk_no), str(atm_no), str(full_name), str(phone_no), str(marks)]
+    row = [str(no), str(smk_no), str(atm_no), str(full_name), str(phone_no), str(marks)]
     worksheet.append_row(row)
 
 # ----------------- STREAMLIT UI -----------------
@@ -126,6 +127,7 @@ if page == "MARKS ENTRY":
                     if match.empty:
                         st.error("❌ SMK NO not found. Please check and try again.")
                     else:
+                        st.session_state.no = str(match.iloc[0]["NO"])
                         st.session_state.smk_no = smk_no.strip()
                         st.session_state.atm_no = str(match.iloc[0]["ATM NO"])
                         st.session_state.full_name = str(match.iloc[0]["FULL NAME"])
@@ -136,11 +138,13 @@ if page == "MARKS ENTRY":
                     st.error(f"Error connecting to Google Sheets: {e}")
 
     else:
-        st.success("✅ SMK NO found! Please verify your details.")
+        st.success("✅ SMK Found! Thanks.")
+        st.text_input("SMK NO:", value=st.session_state.smk_no, disabled=True)
         st.text_input("ATM NO:", value=st.session_state.atm_no, disabled=True)
         st.text_input("Full Name:", value=st.session_state.full_name, disabled=True)
         st.text_input("Phone Number:", value=st.session_state.phone_no, disabled=True)
         st.session_state.marks = st.text_input("Enter Marks:")
+
 
         if st.button("Confirm & Submit"):
             if not st.session_state.marks.strip():
@@ -148,12 +152,14 @@ if page == "MARKS ENTRY":
             else:
                 try:
                     append_submission(
+                        st.session_state.no,
                         st.session_state.smk_no,
                         st.session_state.atm_no,
                         st.session_state.full_name,
                         st.session_state.phone_no,
                         st.session_state.marks
                     )
+
                     st.session_state.submitted = True
                     st.rerun()
                 except Exception as e:
