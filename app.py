@@ -209,9 +209,10 @@ elif page == "PENDING MARK ENTRY":
 elif page == "SETTINGS":
     st.title("⚙️ SETTINGS")
 
-    st.markdown("Use the button below to clear cached data and reload fresh data from Google Sheets.")
+    if admin_login("settings_access"):   # ✅ Protect this page with password
+        st.markdown("Use the button below to clear cached data and reload fresh data from Google Sheets.")
 
-    if st.button("🔄 Refresh Data"):
-        st.cache_data.clear()
-        st.success("✅ Cache cleared! Fetching latest data...")
-        st.rerun()
+        if st.button("🔄 Refresh Data"):
+            st.cache_data.clear()
+            st.success("✅ Cache cleared! Fetching latest data...")
+            st.rerun()
